@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { AccountService } from "../_services/account.service";
 import { logMessages } from "@angular-devkit/build-angular/src/tools/esbuild/utils";
+import { ToastrService } from "ngx-toastr";
 
 @Component({
   selector: 'app-register',
@@ -11,13 +12,16 @@ export class RegisterComponent {
   @Output() cancelRegister = new EventEmitter();
   model: any = {}
 
-  constructor (private accountService: AccountService) {
+  constructor (private accountService: AccountService, private toastr: ToastrService) {
   }
 
   register () {
     this.accountService.register(this.model).subscribe({
       next: () => this.cancel(),
-      error: error => console.log(error)
+      error: error => {
+        this.toastr.error(error.error)
+        console.log(error.error)
+      }
     })
   }
 
