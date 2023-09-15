@@ -1,6 +1,7 @@
 using API.DTOs;
 using API.Entities;
 using API.Extensions;
+using API.Helpers;
 using API.Interfaces;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
@@ -12,8 +13,8 @@ namespace API.Controllers;
 public class UsersController : BaseApiController
 {
     private readonly IMapper _mapper;
-    private readonly IUserRepository _userRepository;
     private readonly IPhotoService _photoService;
+    private readonly IUserRepository _userRepository;
 
     public UsersController(IUserRepository userRepository, IMapper mapper, IPhotoService photoService)
     {
@@ -23,9 +24,19 @@ public class UsersController : BaseApiController
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<MemberDto>>> GetUsers()
+    public async Task<ActionResult<PagedList<MemberDto>>> GetUsers([FromQuery] UserParams userParams)
     {
-        var users = await _userRepository.GetMembersAsync();
+        var currentUser = await _userRepository.GetUserByUsernameAsync(User.GetUsername());
+        userParams.CurrentUsername = currentUser.UserName;
+
+        if (string.IsNullOrEmpty(userParams.Gender))
+            userParams.Gender = currentUser.Gender == "male" ? "female" : "male";
+
+        var users = await _userRepository.GetMembersAsync(userParams);
+
+        Response.AddPaginationHeader(new PaginationHeader(users.CurrentPage, users.PageSize, users.TotalCount,
+            users.TotalPages));
+
         return Ok(users);
     }
 
@@ -64,13 +75,11 @@ public class UsersController : BaseApiController
         };
 
         if (user.Photos.Count == 0) photo.IsMain = true;
-        
+
         user.Photos.Add(photo);
 
         if (await _userRepository.SaveAllAsync())
-        {
             return CreatedAtAction(nameof(GetUser), new { username = user.UserName }, _mapper.Map<PhotoDto>(photo));
-        }
         return BadRequest("Problem adding photo");
     }
 
@@ -93,7 +102,6 @@ public class UsersController : BaseApiController
         if (await _userRepository.SaveAllAsync()) return NoContent();
 
         return BadRequest("Problem setting main photo");
-
     }
 
     [HttpDelete("delete-photo/{photoId}")]
@@ -118,6 +126,5 @@ public class UsersController : BaseApiController
         if (await _userRepository.SaveAllAsync()) return Ok();
 
         return BadRequest("Problem deleting photo");
-
     }
 }
