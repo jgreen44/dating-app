@@ -22,14 +22,17 @@ export class NavComponent implements OnInit {
 
   login () {
     this.accountService.login(this.model).subscribe({
-      next: async _ => await this.router.navigateByUrl('/members')
+      next: async _ => {
+        await this.router.navigateByUrl('/members');
+        this.model = {};
+      }
 
     })
   }
 
   async logout () {
     this.accountService.logout();
-    await this.router.navigateByUrl('/')
+    await this.router.navigateByUrl('/');
   }
 
 }
